@@ -137,7 +137,14 @@
       "usage_unavailable": "使用量は一時的に利用できません",
       "members": "メンバー",
       "members_pending": "保留中の招待：{{pending}} 件",
-      "metering": "スケジュール、Webhook、エージェントによる実行はカウントされます。メンバーが「今すぐ実行」で開始した実行はカウントされません。"
+      "metering": "スケジュール、Webhook、エージェントによる実行はカウントされます。メンバーが「今すぐ実行」で開始した実行はカウントされません。",
+      "addon": "追加の実行回数",
+      "addon_description": "実行枠を使い切ると、翌月のリセットまたは追加購入まで自動化は停止します。",
+      "addon_included": "うち追加分 {{runs}} 回",
+      "addon_none": "今月の追加購入なし",
+      "addon_purchased": "今月 {{runs}} 回を追加購入済み",
+      "addon_buy": "追加購入 · {{price}} / {{runs}} 回",
+      "addon_buy_fallback": "実行回数を追加購入"
     },
     "seats": {
       "title": "席数",
@@ -215,7 +222,9 @@
       "success_title": "プランを変更しました",
       "success_description": "このワークスペースは {{plan}} になりました。",
       "unresolved": "前回のプラン変更を確認できませんでした。プランを変更する前にサポートにお問い合わせください。",
-      "check_failed": "プラン変更を確認できませんでした。再度お試しください。"
+      "check_failed": "プラン変更を確認できませんでした。再度お試しください。",
+      "addon_downgrade_notice": "切り替え後、今月の上限は追加購入分を含めて {{limit}} 回になります。今月はすでに {{used}} 回使用しています。",
+      "addon_downgrade_notice_limit_only": "切り替え後、今月の上限は追加購入分を含めて {{limit}} 回になります。"
     },
     "confirm": {
       "title": "Stripe Checkout に進みますか？",
@@ -308,5 +317,35 @@
         "after": "終了後も既存のゲストはアクセスを保持します。新しいゲストの招待には Pro または Business が必要です。"
       }
     }
+  },
+  "autopilot_addon": {
+    "title": "自動化の実行回数を追加購入",
+    "description": "追加購入した回数は今月中有効で、ワークスペース全員で共有します。プランの実行枠から先に使われます。",
+    "options_label": "追加する回数",
+    "option": "{{runs}} 回",
+    "card": "{{brand}} •••• {{last4}}",
+    "charge_summary": "{{card}} に {{amount}} を請求します。",
+    "charge_summary_default": "ワークスペースの既定の支払い方法に {{amount}} を請求します。",
+    "usage_summary": "今月の使用量 {{used}} / {{limit}} 回、{{date}} にリセット。",
+    "resets_summary": "{{date}} にリセット。",
+    "pay": "{{amount}} を支払って追加",
+    "pay_fallback": "支払って追加",
+    "cancel": "キャンセル",
+    "loading": "追加購入のオプションを読み込み中…",
+    "load_failed": "追加購入のオプションを読み込めませんでした。閉じてからもう一度お試しください。",
+    "unavailable": "このワークスペースは現在、実行回数を追加購入できません。",
+    "success_title": "実行回数を追加しました",
+    "success_description": "今月の実行回数に {{runs}} 回を追加しました。自動化は次回の実行から再開します。",
+    "action_required_title": "支払いを確認してください",
+    "action_required_description": "銀行がこの支払いの確認を求めています。Stripe のページで支払いを完了してから、ここに戻ってください。",
+    "open_payment": "支払いページを開く",
+    "check_payment": "支払い済み、再確認する",
+    "checking": "支払いを確認しています…",
+    "still_pending": "支払いはまだ確認されていません。完了している場合は、しばらくしてから再確認してください。",
+    "declined": "カードが拒否され、請求は発生していません。「請求を管理」でカードを更新してから再度お試しください。",
+    "failed": "支払いが完了せず、請求は発生していません。",
+    "conflict": "現在は追加購入できないか、価格が変更されました。オプションを確認してもう一度お試しください。",
+    "error": "購入を確認できませんでした。もう一度お試しください。二重に請求されることはありません。",
+    "done": "完了"
   }
 }

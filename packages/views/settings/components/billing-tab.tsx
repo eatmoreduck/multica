@@ -103,6 +103,7 @@ import {
   yearlyPriceMonthlyEquivalent,
 } from "./billing-state";
 import { formatStripeMinorAmount } from "./billing-format";
+import { AutopilotAddonDialog } from "../../billing/autopilot-addon-dialog";
 import { BillingTrialSection } from "./billing-trial-section";
 import { settingsHref } from "./settings-navigation";
 
@@ -458,6 +459,7 @@ function BillingTabContent() {
   const quotaUsageQuery = useQuery(autopilotQuotaUsageOptions(wsId));
   const hasSeatCapacity = hasActiveWorkspaceSeatCapacity(summaryQuery.data);
   const canUpgrade = summaryQuery.data?.availableActions.checkout === true;
+  const [autopilotAddonOpen, setAutopilotAddonOpen] = useState(false);
   const pricesQuery = useQuery({
     ...workspaceSubscriptionPricesOptions(wsId),
     enabled: wsId.length > 0 && canUpgrade,
@@ -1262,6 +1264,18 @@ function BillingTabContent() {
       ? formatDateTime(quotaUsage.resetAt, locale)
       : null;
   const numberFormatter = new Intl.NumberFormat(locale);
+  // This month's add-on runs, already part of the limit Cloud reports.
+  const autopilotAddon = summaryQuery.data?.autopilotAddon ?? null;
+  const canBuyAutopilotAddon =
+    summaryQuery.data?.availableActions.purchaseAutopilotRuns === true;
+  const autopilotAddonPrice = pricesQuery.data?.autopilotAddon ?? null;
+  const formattedAutopilotAddonPrice = autopilotAddonPrice
+    ? formatStripeMinorAmount(
+        autopilotAddonPrice.unitAmount,
+        autopilotAddonPrice.currency,
+        locale,
+      )
+    : null;
   // Members and pending invitations against the plan's member limit, shown
   // whenever Cloud applies one (observed or enforced).
   const memberLimitData = memberLimitQuery.data;
@@ -1931,6 +1945,13 @@ function BillingTabContent() {
                     reserved: numberFormatter.format(quotaUsage.reserved),
                   })}
                 </p>
+                {autopilotAddon ? (
+                  <p className="text-caption text-muted-foreground tabular-nums">
+                    {t(($) => $.workspace.limits.addon_included, {
+                      runs: numberFormatter.format(autopilotAddon.purchasedRuns),
+                    })}
+                  </p>
+                ) : null}
                 {quotaResetAt ? (
                   <p className="text-caption text-muted-foreground tabular-nums">
                     {t(($) => $.workspace.limits.resets_at, {
@@ -1971,6 +1992,38 @@ function BillingTabContent() {
               </div>
             )}
           </SettingsRow>
+          {autopilotAddon ? (
+            <SettingsRow
+              label={t(($) => $.workspace.limits.addon)}
+              description={t(($) => $.workspace.limits.addon_description)}
+            >
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
+                <span className="text-body text-muted-foreground tabular-nums">
+                  {autopilotAddon.purchasedRuns > 0
+                    ? t(($) => $.workspace.limits.addon_purchased, {
+                        runs: numberFormatter.format(autopilotAddon.purchasedRuns),
+                      })
+                    : t(($) => $.workspace.limits.addon_none)}
+                </span>
+                {canBuyAutopilotAddon ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setAutopilotAddonOpen(true)}
+                  >
+                    <Plus />
+                    {autopilotAddonPrice && formattedAutopilotAddonPrice
+                      ? t(($) => $.workspace.limits.addon_buy, {
+                          price: formattedAutopilotAddonPrice,
+                          runs: numberFormatter.format(autopilotAddonPrice.runsPerPack),
+                        })
+                      : t(($) => $.workspace.limits.addon_buy_fallback)}
+                  </Button>
+                ) : null}
+              </div>
+            </SettingsRow>
+          ) : null}
           {memberLimit ? (
             <SettingsRow label={t(($) => $.workspace.limits.members)}>
               <div className="flex flex-col gap-1 sm:items-end">
@@ -2479,6 +2532,24 @@ function BillingTabContent() {
                 </p>
               </div>
             ) : null}
+            {planChangePreview &&
+            !planChangeIsUpgrade &&
+            (autopilotAddon?.purchasedRuns ?? 0) > 0 &&
+            planChangePreview.autopilotRunsLimitAfter !== null ? (
+              <Alert>
+                <AlertCircle />
+                <AlertDescription>
+                  {quotaUsage.kind === "metered"
+                    ? t(($) => $.workspace.plan_change.addon_downgrade_notice, {
+                        limit: numberFormatter.format(planChangePreview.autopilotRunsLimitAfter),
+                        used: numberFormatter.format(quotaUsage.total),
+                      })
+                    : t(($) => $.workspace.plan_change.addon_downgrade_notice_limit_only, {
+                        limit: numberFormatter.format(planChangePreview.autopilotRunsLimitAfter),
+                      })}
+                </AlertDescription>
+              </Alert>
+            ) : null}
           </div>
           <DialogFooter>
             <Button
@@ -2568,6 +2639,13 @@ function BillingTabContent() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      {autopilotAddonOpen ? (
+        <AutopilotAddonDialog
+          wsId={wsId}
+          open={autopilotAddonOpen}
+          onOpenChange={setAutopilotAddonOpen}
+        />
+      ) : null}
     </SettingsTab>
   );
 }

@@ -248,7 +248,18 @@ export interface WorkspaceSubscriptionSummary {
     changePlan: boolean;
     /** Ask Cloud to settle a plan change that is still confirming. */
     checkPlanChange: boolean;
+    /**
+     * Buy autopilot run add-on packs for the current month. False on a cloud
+     * that predates add-ons.
+     */
+    purchaseAutopilotRuns: boolean;
   };
+  /**
+   * This month's autopilot add-ons. Null on Free, without a subscription, and
+   * on a cloud that predates add-ons. `entitlement.limits.autopilotRuns`
+   * already includes `purchasedRuns`.
+   */
+  autopilotAddon: WorkspaceAutopilotAddonSummary | null;
   /**
    * A plan change that still holds the subscription. While present, seat
    * purchases and other plan changes are unavailable.
@@ -321,10 +332,79 @@ export interface WorkspaceSubscriptionPlanPrices {
   year: WorkspaceSubscriptionPrice;
 }
 
-export type WorkspaceSubscriptionPrices = Record<
-  WorkspaceSubscriptionPaidPlan,
-  WorkspaceSubscriptionPlanPrices
->;
+export interface WorkspaceSubscriptionPrices {
+  pro: WorkspaceSubscriptionPlanPrices;
+  business: WorkspaceSubscriptionPlanPrices;
+  /**
+   * The one-time autopilot add-on pack. Null when Cloud does not sell one, or
+   * on a cloud that predates add-ons.
+   */
+  autopilotAddon: WorkspaceAutopilotAddonPrice | null;
+}
+
+/** Autopilot runs bought this month, valid until the month ends. */
+export interface WorkspaceAutopilotAddonSummary {
+  purchasedRuns: number;
+  periodStart: string;
+  periodEnd: string;
+}
+
+/** The price of one autopilot add-on pack. */
+export interface WorkspaceAutopilotAddonPrice {
+  currency: string;
+  /** Minor currency units per pack, e.g. 1000 for $10.00. */
+  unitAmount: number;
+  runsPerPack: number;
+}
+
+/** Card Cloud charges for an add-on, as Stripe reports it. */
+export interface WorkspacePaymentMethodSummary {
+  brand: string;
+  last4: string;
+}
+
+/** Everything the add-on purchase dialog needs; managers only. */
+export interface WorkspaceAutopilotAddon {
+  runsPerPack: number;
+  maxPacks: number;
+  currency: string;
+  unitAmount: number;
+  /** Null when the workspace has no default card or Stripe could not say. */
+  paymentMethod: WorkspacePaymentMethodSummary | null;
+  purchasedRuns: number;
+  periodStart: string;
+  periodEnd: string;
+}
+
+export interface PurchaseWorkspaceAutopilotAddonRequest {
+  packs: number;
+  /** The pack price the payer saw; Cloud refuses a purchase at another price. */
+  expectedUnitAmount: number;
+  currency: string;
+  idempotencyKey: string;
+}
+
+/**
+ * paid: the runs are available now. requires_action: the card needs
+ * authentication at `paymentUrl`; poll the purchase afterwards. pending: Cloud
+ * has not settled it yet. failed: nothing was charged.
+ */
+export type WorkspaceAutopilotAddonPurchaseStatus =
+  | "paid"
+  | "requires_action"
+  | "pending"
+  | "failed";
+
+export interface WorkspaceAutopilotAddonPurchase {
+  requestId: string;
+  packs: number;
+  runs: number;
+  currency: string;
+  amount: number;
+  status: WorkspaceAutopilotAddonPurchaseStatus;
+  paymentUrl: string | null;
+  paidAt: string | null;
+}
 
 export interface CreateWorkspaceSubscriptionCheckoutRequest {
   plan: WorkspaceSubscriptionPaidPlan;
@@ -405,6 +485,11 @@ export interface WorkspacePlanChangePreview {
   /** True when the proration is invoiced immediately (upgrades). */
   invoiceNow: boolean;
   quotedAt: string;
+  /**
+   * The monthly autopilot run limit right after the change, including this
+   * month's add-ons. Null on a cloud that predates add-ons.
+   */
+  autopilotRunsLimitAfter: number | null;
 }
 
 export interface ChangeWorkspacePlanRequest {

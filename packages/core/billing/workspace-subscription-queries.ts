@@ -19,6 +19,8 @@ export const workspaceSubscriptionKeys = {
     [...workspaceSubscriptionKeys.all(wsId), "summary"] as const,
   prices: (wsId: string) =>
     [...workspaceSubscriptionKeys.all(wsId), "prices"] as const,
+  autopilotAddon: (wsId: string) =>
+    [...workspaceSubscriptionKeys.all(wsId), "autopilot-addon"] as const,
 };
 
 /**
@@ -68,6 +70,21 @@ export function workspaceSubscriptionPricesOptions(wsId: string) {
     staleTime: (query) =>
       workspaceSubscriptionPricesStaleTime(query.state.data),
     refetchOnWindowFocus: true,
+    retry: false,
+  });
+}
+
+/**
+ * Add-on purchase options for the purchase dialog: pack price, the card Cloud
+ * will charge, and this month's add-ons. Managers only; read fresh each time
+ * the dialog opens because the card can change in the Billing Portal.
+ */
+export function workspaceAutopilotAddonOptions(wsId: string, enabled = true) {
+  return queryOptions({
+    queryKey: workspaceSubscriptionKeys.autopilotAddon(wsId),
+    queryFn: () => api.getWorkspaceAutopilotAddon(),
+    enabled: enabled && wsId.length > 0,
+    staleTime: 0,
     retry: false,
   });
 }

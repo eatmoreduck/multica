@@ -1630,9 +1630,62 @@ describe("workspace subscription contract", () => {
       purchaseSeats: false,
       changePlan: true,
       checkPlanChange: false,
+      // An older cloud sends no add-on action and no add-on summary.
+      purchaseAutopilotRuns: false,
     });
+    expect(summary?.autopilotAddon).toBeNull();
     expect(summary?.planChange).toBeNull();
     expect(summary?.trial).toBeNull();
+  });
+
+  it("reads the autopilot add-on action and this month's add-ons", async () => {
+    const base = {
+      entitlement,
+      billing_interval: "month",
+      human_members: 3,
+      seat_capacity: null,
+      cancel_at_period_end: false,
+      grace_until: null,
+      has_stripe_customer: true,
+    };
+    stubFetchJson({
+      ...base,
+      available_actions: {
+        checkout: false,
+        portal: true,
+        purchase_seats: true,
+        purchase_autopilot_runs: true,
+      },
+      autopilot_addon: {
+        purchased_runs: 3000,
+        period_start: "2026-11-01T00:00:00Z",
+        period_end: "2026-12-01T00:00:00Z",
+      },
+    });
+    const client = new ApiClient("https://api.example.test");
+    const summary = await client.getWorkspaceSubscriptionSummary();
+    expect(summary?.availableActions.purchaseAutopilotRuns).toBe(true);
+    expect(summary?.autopilotAddon).toEqual({
+      purchasedRuns: 3000,
+      periodStart: "2026-11-01T00:00:00Z",
+      periodEnd: "2026-12-01T00:00:00Z",
+    });
+
+    // Malformed add-on fields never take the summary down: no add-on offered.
+    stubFetchJson({
+      ...base,
+      available_actions: {
+        checkout: false,
+        portal: true,
+        purchase_seats: true,
+        purchase_autopilot_runs: "yes",
+      },
+      autopilot_addon: { purchased_runs: -1 },
+    });
+    const malformed = await client.getWorkspaceSubscriptionSummary();
+    expect(malformed).not.toBeNull();
+    expect(malformed?.availableActions.purchaseAutopilotRuns).toBe(false);
+    expect(malformed?.autopilotAddon).toBeNull();
   });
 
   it("reads a plan change that still holds the subscription", async () => {
@@ -1873,10 +1926,150 @@ describe("workspace subscription contract", () => {
     expect(prices?.pro.year.interval).toBe("year");
     expect(prices?.business.month.unitAmount).toBe(3000);
     expect(prices?.business.year.unitAmount).toBe(28800);
+    // An older cloud sells no add-on pack.
+    expect(prices?.autopilotAddon).toBeNull();
 
     // A zero or missing amount must not be rendered next to a purchase button.
     stubFetchJson({ pro: planPrices(0, 14400), business: planPrices(3000, 28800) });
     expect(await client.getWorkspaceSubscriptionPrices()).toBeNull();
+  });
+
+  it("reads the add-on pack price on its own", async () => {
+    const client = new ApiClient("https://api.example.test");
+    stubFetchJson({
+      pro: planPrices(1500, 14400),
+      business: planPrices(3000, 28800),
+      autopilot_addon: { currency: "usd", unit_amount: 1000, runs_per_pack: 1000 },
+    });
+    expect((await client.getWorkspaceSubscriptionPrices())?.autopilotAddon).toEqual({
+      currency: "usd",
+      unitAmount: 1000,
+      runsPerPack: 1000,
+    });
+
+    // A malformed pack price hides the add-on but keeps the plan prices.
+    for (const malformed of [
+      { currency: "usd", unit_amount: 0, runs_per_pack: 1000 },
+      { currency: "USD", unit_amount: 1000, runs_per_pack: 1000 },
+      { currency: "usd", unit_amount: 1000 },
+      "1000",
+    ]) {
+      stubFetchJson({
+        pro: planPrices(1500, 14400),
+        business: planPrices(3000, 28800),
+        autopilot_addon: malformed,
+      });
+      const prices = await client.getWorkspaceSubscriptionPrices();
+      expect(prices?.pro.month.unitAmount).toBe(1500);
+      expect(prices?.autopilotAddon).toBeNull();
+    }
+  });
+
+  it("reads add-on purchase options and fails closed on a malformed price", async () => {
+    const client = new ApiClient("https://api.example.test");
+    const valid = {
+      runs_per_pack: 1000,
+      max_packs: 10,
+      currency: "usd",
+      unit_amount: 1000,
+      payment_method: { brand: "visa", last4: "4242" },
+      purchased_runs: 0,
+      period_start: "2026-11-01T00:00:00Z",
+      period_end: "2026-12-01T00:00:00Z",
+    };
+    stubFetchJson(valid);
+    await expect(client.getWorkspaceAutopilotAddon()).resolves.toEqual({
+      runsPerPack: 1000,
+      maxPacks: 10,
+      currency: "usd",
+      unitAmount: 1000,
+      paymentMethod: { brand: "visa", last4: "4242" },
+      purchasedRuns: 0,
+      periodStart: "2026-11-01T00:00:00Z",
+      periodEnd: "2026-12-01T00:00:00Z",
+    });
+    expect(vi.mocked(fetch)).toHaveBeenLastCalledWith(
+      "https://api.example.test/api/cloud-subscriptions/autopilot-addon",
+      expect.anything(),
+    );
+
+    // A card Cloud could not read is shown as the default payment method.
+    stubFetchJson({ ...valid, payment_method: { brand: "visa", last4: "42" } });
+    expect((await client.getWorkspaceAutopilotAddon())?.paymentMethod).toBeNull();
+
+    for (const malformed of [
+      { ...valid, unit_amount: 0 },
+      { ...valid, runs_per_pack: undefined },
+      { ...valid, currency: "dollars" },
+    ]) {
+      stubFetchJson(malformed);
+      expect(await client.getWorkspaceAutopilotAddon()).toBeNull();
+    }
+  });
+
+  it("buys add-on packs with the accepted price and reads the purchase back", async () => {
+    const client = new ApiClient("https://api.example.test");
+    stubFetchJson({
+      request_id: "33333333-3333-3333-3333-333333333333",
+      packs: 3,
+      runs: 3000,
+      currency: "usd",
+      amount: 3000,
+      status: "requires_action",
+      payment_url: "https://invoice.stripe.com/i/acct/test",
+      paid_at: null,
+    });
+    await expect(
+      client.purchaseWorkspaceAutopilotAddon({
+        packs: 3,
+        expectedUnitAmount: 1000,
+        currency: "usd",
+        idempotencyKey: "addon-1",
+      }),
+    ).resolves.toEqual({
+      requestId: "33333333-3333-3333-3333-333333333333",
+      packs: 3,
+      runs: 3000,
+      currency: "usd",
+      amount: 3000,
+      status: "requires_action",
+      paymentUrl: "https://invoice.stripe.com/i/acct/test",
+      paidAt: null,
+    });
+    expect(vi.mocked(fetch)).toHaveBeenLastCalledWith(
+      "https://api.example.test/api/cloud-subscriptions/autopilot-addon/purchases",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({
+          packs: 3,
+          expected_unit_amount: 1000,
+          currency: "usd",
+          idempotency_key: "addon-1",
+        }),
+      }),
+    );
+
+    // An unknown status keeps polling; authentication without a usable HTTPS
+    // link cannot be completed, so it reads as pending too.
+    for (const [body, status] of [
+      [{ status: "settling" }, "pending"],
+      [{ status: "requires_action", payment_url: "javascript:alert(1)" }, "pending"],
+      [{ status: "paid", paid_at: "2026-11-20T00:00:00Z" }, "paid"],
+    ] as const) {
+      stubFetchJson({
+        request_id: "33333333-3333-3333-3333-333333333333",
+        packs: 1,
+        runs: 1000,
+        currency: "usd",
+        amount: 1000,
+        ...body,
+      });
+      expect(
+        (await client.getWorkspaceAutopilotAddonPurchase("33333333-3333-3333-3333-333333333333"))?.status,
+      ).toBe(status);
+    }
+    stubFetchJson({ request_id: "x", packs: 0, runs: 1000, currency: "usd", amount: 1000, status: "paid" });
+    expect(await client.getWorkspaceAutopilotAddonPurchase("x")).toBeNull();
   });
 
   it("rejects prices that omit a paid plan or use the retired flat shape", async () => {
@@ -1954,6 +2147,7 @@ describe("workspace subscription contract", () => {
       nextInvoiceAmount: 57600,
       invoiceNow: false,
       quotedAt: "2026-11-18T08:00:00Z",
+      autopilotRunsLimitAfter: null,
     });
     expect(vi.mocked(fetch)).toHaveBeenLastCalledWith(
       "https://api.example.test/api/cloud-subscriptions/plan-changes/preview",

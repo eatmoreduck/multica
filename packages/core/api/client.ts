@@ -288,6 +288,9 @@ import type {
   CreateBillingPortalSessionResponse,
   WorkspaceSubscriptionSummary,
   WorkspaceSubscriptionPrices,
+  WorkspaceAutopilotAddon,
+  WorkspaceAutopilotAddonPurchase,
+  PurchaseWorkspaceAutopilotAddonRequest,
   WorkspaceFeatures,
   MemberLimit,
   CreateWorkspaceSubscriptionCheckoutRequest,
@@ -451,6 +454,8 @@ import {
   BatchUpdateIssuesResponseSchema,
   UNCONFIRMED_BATCH_UPDATE,
   WorkspaceSubscriptionPricesSchema,
+  WorkspaceAutopilotAddonSchema,
+  WorkspaceAutopilotAddonPurchaseSchema,
   WorkspaceFeaturesSchema,
   MemberLimitSchema,
   CreateWorkspaceSubscriptionCheckoutResponseSchema,
@@ -2862,6 +2867,61 @@ export class ApiClient {
       CreateWorkspaceSubscriptionPortalResponseSchema,
       null,
       { endpoint: "POST /api/cloud-subscriptions/portal-sessions" },
+    );
+  }
+
+  // Autopilot add-on packs (managers only). A non-2xx answer throws ApiError
+  // with Cloud's status: 402 declined card, 409 not purchasable or price
+  // changed, 503 outcome unknown (retry with the same idempotency key).
+  async getWorkspaceAutopilotAddon(): Promise<WorkspaceAutopilotAddon | null> {
+    const raw = await this.fetch<unknown>("/api/cloud-subscriptions/autopilot-addon");
+    return parseWithFallback<WorkspaceAutopilotAddon | null>(
+      raw,
+      WorkspaceAutopilotAddonSchema,
+      null,
+      { endpoint: "GET /api/cloud-subscriptions/autopilot-addon" },
+    );
+  }
+
+  async purchaseWorkspaceAutopilotAddon(
+    data: PurchaseWorkspaceAutopilotAddonRequest,
+  ): Promise<WorkspaceAutopilotAddonPurchase | null> {
+    const res = await this.fetchRaw(
+      "/api/cloud-subscriptions/autopilot-addon/purchases",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          packs: data.packs,
+          expected_unit_amount: data.expectedUnitAmount,
+          currency: data.currency,
+          idempotency_key: data.idempotencyKey,
+        }),
+        extraHeaders: {
+          "Content-Type": "application/json",
+          "Idempotency-Key": data.idempotencyKey,
+        },
+      },
+    );
+    const raw = (await res.json()) as unknown;
+    return parseWithFallback<WorkspaceAutopilotAddonPurchase | null>(
+      raw,
+      WorkspaceAutopilotAddonPurchaseSchema,
+      null,
+      { endpoint: "POST /api/cloud-subscriptions/autopilot-addon/purchases" },
+    );
+  }
+
+  async getWorkspaceAutopilotAddonPurchase(
+    requestId: string,
+  ): Promise<WorkspaceAutopilotAddonPurchase | null> {
+    const raw = await this.fetch<unknown>(
+      `/api/cloud-subscriptions/autopilot-addon/purchases/${encodeURIComponent(requestId)}`,
+    );
+    return parseWithFallback<WorkspaceAutopilotAddonPurchase | null>(
+      raw,
+      WorkspaceAutopilotAddonPurchaseSchema,
+      null,
+      { endpoint: "GET /api/cloud-subscriptions/autopilot-addon/purchases/:id" },
     );
   }
 

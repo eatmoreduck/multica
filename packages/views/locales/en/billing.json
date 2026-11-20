@@ -138,7 +138,14 @@
       "usage_unavailable": "Usage is temporarily unavailable",
       "members": "Members",
       "members_pending": "Pending invitations: {{pending}}",
-      "metering": "Runs from schedules, webhooks, and agents count. Runs a member starts with Run now don't."
+      "metering": "Runs from schedules, webhooks, and agents count. Runs a member starts with Run now don't.",
+      "addon": "Add-on runs",
+      "addon_description": "When the allowance runs out, automations pause until next month or until you buy more runs.",
+      "addon_included": "Includes {{runs}} add-on runs",
+      "addon_none": "None this month",
+      "addon_purchased": "{{runs}} bought this month",
+      "addon_buy": "Buy · {{price}} / {{runs}} runs",
+      "addon_buy_fallback": "Buy more runs"
     },
     "seats": {
       "title": "Seats",
@@ -221,7 +228,9 @@
       "success_title": "Plan changed",
       "success_description": "This workspace is now on {{plan}}.",
       "unresolved": "The previous plan change could not be confirmed. Contact support before changing plans.",
-      "check_failed": "Could not check the plan change. Try again."
+      "check_failed": "Could not check the plan change. Try again.",
+      "addon_downgrade_notice": "This month's limit becomes {{limit}} runs after the switch, including runs you bought. {{used}} runs are used this month.",
+      "addon_downgrade_notice_limit_only": "This month's limit becomes {{limit}} runs after the switch, including runs you bought."
     },
     "confirm": {
       "title": "Continue to Stripe Checkout?",
@@ -320,5 +329,35 @@
         "after": "Existing guests keep their access after the trial. New guests need Pro or Business."
       }
     }
+  },
+  "autopilot_addon": {
+    "title": "Buy more automation runs",
+    "description": "Add-on runs are valid this month and shared by everyone in the workspace. The plan allowance is used first.",
+    "options_label": "Number of runs",
+    "option": "{{runs}} runs",
+    "card": "{{brand}} •••• {{last4}}",
+    "charge_summary": "{{amount}} will be charged to {{card}}.",
+    "charge_summary_default": "{{amount}} will be charged to the workspace's default payment method.",
+    "usage_summary": "{{used}} / {{limit}} used this month, resets {{date}}.",
+    "resets_summary": "Resets {{date}}.",
+    "pay": "Pay {{amount}} and add",
+    "pay_fallback": "Pay and add",
+    "cancel": "Cancel",
+    "loading": "Loading add-on options…",
+    "load_failed": "Add-on options couldn't be loaded. Close this and try again.",
+    "unavailable": "This workspace can't buy add-on runs right now.",
+    "success_title": "Runs added",
+    "success_description": "{{runs}} runs were added for this month. Automations start again with their next run.",
+    "action_required_title": "Confirm the payment",
+    "action_required_description": "Your bank asked to confirm this payment. Finish it on the Stripe page, then come back here.",
+    "open_payment": "Open payment page",
+    "check_payment": "I've paid, check again",
+    "checking": "Checking the payment…",
+    "still_pending": "The payment isn't confirmed yet. If you've finished it, check again in a moment.",
+    "declined": "The card was declined and nothing was charged. Update the card in Manage billing, then try again.",
+    "failed": "The payment didn't go through and nothing was charged.",
+    "conflict": "Add-on runs can't be bought right now, or the price changed. Review the options and try again.",
+    "error": "The purchase couldn't be confirmed. Try again; you won't be charged twice.",
+    "done": "Done"
   }
 }

@@ -138,7 +138,14 @@
       "usage_unavailable": "El uso no está disponible temporalmente",
       "members": "Miembros",
       "members_pending": "Invitaciones pendientes: {{pending}}",
-      "metering": "Cuentan las ejecuciones de programaciones, webhooks y agentes. Las que un miembro inicia con Ejecutar ahora no cuentan."
+      "metering": "Cuentan las ejecuciones de programaciones, webhooks y agentes. Las que un miembro inicia con Ejecutar ahora no cuentan.",
+      "addon": "Ejecuciones adicionales",
+      "addon_description": "Cuando se agota la asignación, las automatizaciones se pausan hasta el próximo mes o hasta que compres más ejecuciones.",
+      "addon_included": "Incluye {{runs}} ejecuciones adicionales",
+      "addon_none": "Ninguna este mes",
+      "addon_purchased": "{{runs}} compradas este mes",
+      "addon_buy": "Comprar · {{price}} / {{runs}} ejecuciones",
+      "addon_buy_fallback": "Comprar más ejecuciones"
     },
     "seats": {
       "title": "Puestos",
@@ -221,7 +228,9 @@
       "success_title": "Plan cambiado",
       "success_description": "Este espacio de trabajo ahora usa {{plan}}.",
       "unresolved": "No se ha podido confirmar el cambio de plan anterior. Contacta con soporte antes de cambiar de plan.",
-      "check_failed": "No se ha podido comprobar el cambio de plan. Vuelve a intentarlo."
+      "check_failed": "No se ha podido comprobar el cambio de plan. Vuelve a intentarlo.",
+      "addon_downgrade_notice": "Tras el cambio, el límite de este mes será de {{limit}} ejecuciones, incluidas las compradas. Este mes se han usado {{used}}.",
+      "addon_downgrade_notice_limit_only": "Tras el cambio, el límite de este mes será de {{limit}} ejecuciones, incluidas las compradas."
     },
     "confirm": {
       "title": "¿Continuar a Stripe Checkout?",
@@ -320,5 +329,35 @@
         "after": "Los invitados actuales conservan su acceso después de la prueba. Para invitar a nuevos invitados necesitas Pro o Business."
       }
     }
+  },
+  "autopilot_addon": {
+    "title": "Comprar más ejecuciones de automatización",
+    "description": "Las ejecuciones adicionales valen para este mes y las comparte todo el espacio de trabajo. Primero se usa la asignación del plan.",
+    "options_label": "Número de ejecuciones",
+    "option": "{{runs}} ejecuciones",
+    "card": "{{brand}} •••• {{last4}}",
+    "charge_summary": "Se cobrarán {{amount}} a {{card}}.",
+    "charge_summary_default": "Se cobrarán {{amount}} al método de pago predeterminado del espacio de trabajo.",
+    "usage_summary": "{{used}} / {{limit}} usadas este mes; se restablece el {{date}}.",
+    "resets_summary": "Se restablece el {{date}}.",
+    "pay": "Pagar {{amount}} y añadir",
+    "pay_fallback": "Pagar y añadir",
+    "cancel": "Cancelar",
+    "loading": "Cargando opciones…",
+    "load_failed": "No se pudieron cargar las opciones. Cierra y vuelve a intentarlo.",
+    "unavailable": "Este espacio de trabajo no puede comprar ejecuciones adicionales ahora.",
+    "success_title": "Ejecuciones añadidas",
+    "success_description": "Se añadieron {{runs}} ejecuciones para este mes. Las automatizaciones se reanudan en su próxima ejecución.",
+    "action_required_title": "Confirma el pago",
+    "action_required_description": "Tu banco pidió confirmar este pago. Complétalo en la página de Stripe y vuelve aquí.",
+    "open_payment": "Abrir página de pago",
+    "check_payment": "Ya pagué, comprobar de nuevo",
+    "checking": "Comprobando el pago…",
+    "still_pending": "El pago aún no está confirmado. Si ya lo completaste, vuelve a comprobarlo en un momento.",
+    "declined": "La tarjeta fue rechazada y no se cobró nada. Actualiza la tarjeta en Gestionar facturación y vuelve a intentarlo.",
+    "failed": "El pago no se completó y no se cobró nada.",
+    "conflict": "No se pueden comprar ejecuciones ahora o el precio cambió. Revisa las opciones y vuelve a intentarlo.",
+    "error": "No se pudo confirmar la compra. Vuelve a intentarlo; no se cobrará dos veces.",
+    "done": "Listo"
   }
 }

@@ -138,7 +138,14 @@
       "usage_unavailable": "La consommation est temporairement indisponible",
       "members": "Membres",
       "members_pending": "Invitations en attente : {{pending}}",
-      "metering": "Les exécutions lancées par une planification, un webhook ou un agent sont comptées. Celles qu'un membre lance avec Exécuter maintenant ne le sont pas."
+      "metering": "Les exécutions lancées par une planification, un webhook ou un agent sont comptées. Celles qu'un membre lance avec Exécuter maintenant ne le sont pas.",
+      "addon": "Exécutions supplémentaires",
+      "addon_description": "Une fois l'allocation épuisée, les automatisations sont suspendues jusqu'au mois prochain ou jusqu'à l'achat d'exécutions supplémentaires.",
+      "addon_included": "Dont {{runs}} exécutions supplémentaires",
+      "addon_none": "Aucune ce mois-ci",
+      "addon_purchased": "{{runs}} achetées ce mois-ci",
+      "addon_buy": "Acheter · {{price}} / {{runs}} exécutions",
+      "addon_buy_fallback": "Acheter des exécutions"
     },
     "seats": {
       "title": "Sièges",
@@ -221,7 +228,9 @@
       "success_title": "Forfait changé",
       "success_description": "Cet espace de travail utilise désormais {{plan}}.",
       "unresolved": "Le changement de forfait précédent n'a pas pu être confirmé. Contactez l'assistance avant de changer de forfait.",
-      "check_failed": "Impossible de vérifier le changement de forfait. Réessayez."
+      "check_failed": "Impossible de vérifier le changement de forfait. Réessayez.",
+      "addon_downgrade_notice": "Après le changement, la limite de ce mois sera de {{limit}} exécutions, achats compris. {{used}} exécutions ont été utilisées ce mois-ci.",
+      "addon_downgrade_notice_limit_only": "Après le changement, la limite de ce mois sera de {{limit}} exécutions, achats compris."
     },
     "confirm": {
       "title": "Continuer vers Stripe Checkout ?",
@@ -320,5 +329,35 @@
         "after": "Les invités existants gardent leur accès après l'essai. Inviter de nouveaux invités nécessite Pro ou Business."
       }
     }
+  },
+  "autopilot_addon": {
+    "title": "Acheter des exécutions d'automatisation",
+    "description": "Les exécutions supplémentaires sont valables ce mois-ci et partagées par tout l'espace de travail. L'allocation du forfait est utilisée en premier.",
+    "options_label": "Nombre d'exécutions",
+    "option": "{{runs}} exécutions",
+    "card": "{{brand}} •••• {{last4}}",
+    "charge_summary": "{{amount}} sera débité sur {{card}}.",
+    "charge_summary_default": "{{amount}} sera débité sur le moyen de paiement par défaut de l'espace de travail.",
+    "usage_summary": "{{used}} / {{limit}} utilisées ce mois-ci, réinitialisation le {{date}}.",
+    "resets_summary": "Réinitialisation le {{date}}.",
+    "pay": "Payer {{amount}} et ajouter",
+    "pay_fallback": "Payer et ajouter",
+    "cancel": "Annuler",
+    "loading": "Chargement des options…",
+    "load_failed": "Impossible de charger les options. Fermez puis réessayez.",
+    "unavailable": "Cet espace de travail ne peut pas acheter d'exécutions pour le moment.",
+    "success_title": "Exécutions ajoutées",
+    "success_description": "{{runs}} exécutions ont été ajoutées pour ce mois. Les automatisations reprennent à leur prochaine exécution.",
+    "action_required_title": "Confirmez le paiement",
+    "action_required_description": "Votre banque demande de confirmer ce paiement. Terminez-le sur la page Stripe, puis revenez ici.",
+    "open_payment": "Ouvrir la page de paiement",
+    "check_payment": "J'ai payé, vérifier à nouveau",
+    "checking": "Vérification du paiement…",
+    "still_pending": "Le paiement n'est pas encore confirmé. Si vous l'avez terminé, vérifiez à nouveau dans un instant.",
+    "declined": "La carte a été refusée et rien n'a été débité. Mettez la carte à jour dans Gérer la facturation, puis réessayez.",
+    "failed": "Le paiement n'a pas abouti et rien n'a été débité.",
+    "conflict": "Impossible d'acheter des exécutions pour le moment, ou le prix a changé. Vérifiez les options et réessayez.",
+    "error": "L'achat n'a pas pu être confirmé. Réessayez ; vous ne serez pas débité deux fois.",
+    "done": "Terminé"
   }
 }

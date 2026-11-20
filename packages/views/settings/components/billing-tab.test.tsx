@@ -89,7 +89,9 @@ const mocks = vi.hoisted(() => ({
       purchaseSeats: false,
       changePlan: false,
       checkPlanChange: false,
+      purchaseAutopilotRuns: false,
     },
+    autopilotAddon: null,
     planChange: null as WorkspaceSubscriptionSummary["planChange"],
     trial: null as WorkspaceSubscriptionSummary["trial"],
   } as WorkspaceSubscriptionSummary,
@@ -184,6 +186,11 @@ vi.mock("../../navigation", () => ({
 
 vi.mock("../../platform", () => ({ openExternal: mocks.openExternal }));
 
+vi.mock("../../billing/autopilot-addon-dialog", () => ({
+  AutopilotAddonDialog: ({ open }: { open: boolean }) =>
+    open ? <div role="dialog" aria-label="Buy more automation runs" /> : null,
+}));
+
 import { BillingTab, formatStripeMinorAmount } from "./billing-tab";
 
 // The component formats dates in the viewer's own time zone, so a midnight-UTC
@@ -271,6 +278,7 @@ describe("BillingTab", () => {
           intervalCount: 1,
         },
       },
+      autopilotAddon: null,
     };
     mocks.changePlanPending = false;
     mocks.pricesLoading = false;
@@ -311,7 +319,9 @@ describe("BillingTab", () => {
         purchaseSeats: false,
         changePlan: false,
         checkPlanChange: false,
+        purchaseAutopilotRuns: false,
       },
+      autopilotAddon: null,
       planChange: null,
       trial: null,
     });
@@ -1600,6 +1610,65 @@ describe("BillingTab", () => {
     ).toBeInTheDocument();
   });
 
+  it("shows this month's add-on runs and lets a manager buy more", async () => {
+    Object.assign(mocks.entitlements, { plan: "pro", status: "active" });
+    Object.assign(mocks.summary, {
+      autopilotAddon: {
+        purchasedRuns: 2000,
+        periodStart: "2030-01-01T00:00:00Z",
+        periodEnd: "2030-02-01T00:00:00Z",
+      },
+    });
+    Object.assign(mocks.summary.availableActions, {
+      checkout: false,
+      purchaseAutopilotRuns: true,
+    });
+    mocks.prices = {
+      ...mocks.prices!,
+      autopilotAddon: { currency: "usd", unitAmount: 1000, runsPerPack: 1000 },
+    };
+
+    const user = userEvent.setup();
+    renderWithI18n(<BillingTab />);
+
+    expect(screen.getByText("Includes 2,000 add-on runs")).toBeInTheDocument();
+    expect(screen.getByText("2,000 bought this month")).toBeInTheDocument();
+    await user.click(
+      screen.getByRole("button", { name: "Buy · $10.00 / 1,000 runs" }),
+    );
+    expect(
+      await screen.findByRole("dialog", { name: "Buy more automation runs" }),
+    ).toBeInTheDocument();
+  });
+
+  it("shows add-on runs without a purchase button to a member", () => {
+    Object.assign(mocks.entitlements, { plan: "business", status: "active" });
+    Object.assign(mocks.summary, {
+      autopilotAddon: {
+        purchasedRuns: 0,
+        periodStart: "2030-01-01T00:00:00Z",
+        periodEnd: "2030-02-01T00:00:00Z",
+      },
+    });
+    Object.assign(mocks.summary.availableActions, {
+      checkout: false,
+      purchaseAutopilotRuns: false,
+    });
+
+    renderWithI18n(<BillingTab />);
+
+    expect(screen.getByText("None this month")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /^Buy/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("hides add-on runs on a cloud that predates them", () => {
+    renderWithI18n(<BillingTab />);
+
+    expect(screen.queryByText("Add-on runs")).not.toBeInTheDocument();
+  });
+
   it("shows observed usage over the limit without reporting it reached", () => {
     Object.assign(mocks.usage, {
       action: "observe",
@@ -2125,6 +2194,43 @@ describe("BillingTab", () => {
       });
       expect(
         await screen.findByText("This workspace is now on Pro."),
+      ).toBeInTheDocument();
+    });
+
+    it("tells a downgrading manager this month's limit when add-ons were bought", async () => {
+      const user = userEvent.setup();
+      setPaidPlan("business");
+      mocks.entitlements.limits = {
+        autopilotRuns: { mode: "limited", limit: 4000 },
+      };
+      Object.assign(mocks.summary, {
+        autopilotAddon: {
+          purchasedRuns: 1000,
+          periodStart: "2030-01-01T00:00:00Z",
+          periodEnd: "2030-02-01T00:00:00Z",
+        },
+      });
+      mocks.previewPlanChange.mockResolvedValue({
+        currentPlan: "business",
+        targetPlan: "pro",
+        interval: "month",
+        seats: 1,
+        subscriptionVersion: 8,
+        currency: "usd",
+        prorationAmount: -1200,
+        nextInvoiceAmount: 1500,
+        invoiceNow: false,
+        quotedAt: "2030-01-15T00:00:00Z",
+        autopilotRunsLimitAfter: 2000,
+      });
+      renderWithI18n(<BillingTab />);
+
+      await user.click(screen.getByRole("button", { name: "Switch to Pro" }));
+      const dialog = await screen.findByRole("dialog");
+      expect(
+        await within(dialog).findByText(
+          "This month's limit becomes 2,000 runs after the switch, including runs you bought. 5 runs are used this month.",
+        ),
       ).toBeInTheDocument();
     });
 
