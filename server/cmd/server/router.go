@@ -2156,6 +2156,9 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 				r.Post("/plan-changes/preview", h.PreviewCloudWorkspaceSubscriptionPlanChange)
 				r.Post("/plan-changes", h.ChangeCloudWorkspaceSubscriptionPlan)
 				r.Post("/portal-sessions", h.CreateCloudWorkspaceSubscriptionPortal)
+				r.Get("/autopilot-addon", h.GetCloudWorkspaceAutopilotAddon)
+				r.Post("/autopilot-addon/purchases", h.PurchaseCloudWorkspaceAutopilotAddon)
+				r.Get("/autopilot-addon/purchases/{requestId}", h.GetCloudWorkspaceAutopilotAddonPurchase)
 			})
 		})
 

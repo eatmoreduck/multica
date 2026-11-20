@@ -79,6 +79,7 @@ var routeParamsOutsideProjects = map[string]outsideProjectParam{
 	"share-links/{linkId}":           {why: "a workspace join link"},
 	"tokens/{id}":                    {why: "the caller's own access token"},
 	"checkout-sessions/{sessionId}":  {why: "a billing checkout"},
+	"purchases/{requestId}":          {why: "an autopilot add-on purchase held by Cloud"},
 	"themes/{themeId}":               {why: "a theme store entry"},
 	"screenshots/{mode}":             {why: "a theme screenshot variant"},
 	"avatars/{sig}":                  {why: "a signed avatar URL"},
