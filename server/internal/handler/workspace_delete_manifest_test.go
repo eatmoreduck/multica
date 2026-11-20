@@ -71,6 +71,7 @@ var workspaceDeletionManifest = map[string]workspaceDeleteAction{
 	"doc_version":                        workspaceDelete,
 	"entitlement_feature_attempt":        workspaceDelete,
 	"entitlement_limit_overage":          workspaceDelete,
+	"entitlement_policy_changes":         workspaceDelete,
 	"feedback":                           workspaceDeleteDetach,
 	"github_installation":                workspaceDelete,
 	"github_pending_check_suite":         workspaceDelete,

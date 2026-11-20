@@ -48,8 +48,11 @@ WHERE workspace_id = @workspace_id
 RETURNING *;
 
 -- name: MarkAutopilotQuotaRejectionNotified :one
+-- rejection_notified_limit records the limit the notice was sent at, so a
+-- per-limit notification policy can notify again after the limit changes.
 UPDATE autopilot_quota_period
-SET rejection_notified_at = COALESCE(rejection_notified_at, now()),
+SET rejection_notified_at = now(),
+	rejection_notified_limit = sqlc.narg('notified_limit')::bigint,
 	updated_at = now()
 WHERE workspace_id = @workspace_id
 	AND period_start = @period_start
@@ -146,3 +149,13 @@ WHERE r.state = 'reserved'
   )
 ORDER BY r.created_at
 LIMIT @row_limit;
+
+-- name: RecordEntitlementPolicyChange :exec
+-- Multica confirmed a change to the workspace's Cloud policy (a paid add-on).
+INSERT INTO entitlement_policy_changes (workspace_id, changed_at)
+VALUES ($1, now())
+ON CONFLICT (workspace_id) DO UPDATE SET changed_at = now();
+
+-- name: GetEntitlementPolicyChange :one
+SELECT changed_at FROM entitlement_policy_changes
+WHERE workspace_id = $1;

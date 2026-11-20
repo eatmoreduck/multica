@@ -255,6 +255,16 @@ func (q *Queries) DeleteWorkspaceEntitlementLimitOverages(ctx context.Context, w
 	return err
 }
 
+const deleteWorkspaceEntitlementPolicyChanges = `-- name: DeleteWorkspaceEntitlementPolicyChanges :exec
+DELETE FROM entitlement_policy_changes
+WHERE entitlement_policy_changes.workspace_id = $1
+`
+
+func (q *Queries) DeleteWorkspaceEntitlementPolicyChanges(ctx context.Context, workspaceID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, deleteWorkspaceEntitlementPolicyChanges, workspaceID)
+	return err
+}
+
 const deleteWorkspaceIssueRoots = `-- name: DeleteWorkspaceIssueRoots :exec
 WITH deleted_wakeup_receipts AS (
  DELETE FROM issue_wakeup_receipt WHERE wakeup_id IN (SELECT id FROM issue_wakeup WHERE workspace_id=$1)

@@ -61,6 +61,26 @@ type autopilotQuotaPolicy struct {
 	policyRevision      int64
 	subscriptionVersion int64
 	notifications       *entitlement.NotificationPolicy
+	// receivedAt is when this process received the policy (zero when the
+	// provider does not say). A rejection re-reads a policy older than a
+	// change recorded in entitlement_policy_changes.
+	receivedAt time.Time
+}
+
+// autopilotPolicyChangeSkew widens a recorded policy change so the clock
+// skew between the instance that recorded it and the one reading it cannot
+// make a policy fetched before the change look newer than it.
+const autopilotPolicyChangeSkew = 5 * time.Second
+
+// errAutopilotQuotaPolicyChanged leaves the admission transaction before a
+// rejection when the cached policy predates a recorded policy change; the
+// caller refreshes the policy and runs the admission once more.
+type errAutopilotQuotaPolicyChanged struct {
+	since time.Time
+}
+
+func (e *errAutopilotQuotaPolicyChanged) Error() string {
+	return "autopilot quota policy changed since it was cached"
 }
 
 func newAutopilotIdempotencyKey() string { return uuid.NewString() }
@@ -82,7 +102,31 @@ func (s *AutopilotService) quotaPolicy(ctx context.Context, workspaceID pgtype.U
 	if s.Entitlements == nil || !workspaceID.Valid {
 		return autopilotQuotaPolicy{}, false
 	}
-	decision := s.Entitlements.Gate(ctx, uuid.UUID(workspaceID.Bytes), entitlement.GateAutopilotRuns)
+	return autopilotQuotaPolicyFromDecision(
+		s.Entitlements.Gate(ctx, uuid.UUID(workspaceID.Bytes), entitlement.GateAutopilotRuns),
+	)
+}
+
+// refreshedQuotaPolicy re-reads the policy past the provider's cache: since
+// is the recorded change the cached policy predates.
+func (s *AutopilotService) refreshedQuotaPolicy(ctx context.Context, workspaceID pgtype.UUID, since time.Time) (autopilotQuotaPolicy, bool) {
+	if s.Entitlements == nil || !workspaceID.Valid {
+		return autopilotQuotaPolicy{}, false
+	}
+	workspace := uuid.UUID(workspaceID.Bytes)
+	var decision entitlement.Decision
+	switch provider := s.Entitlements.(type) {
+	case entitlement.ChangeRefresher:
+		decision = provider.RefreshGateSince(ctx, workspace, entitlement.GateAutopilotRuns, since)
+	case entitlement.Refresher:
+		decision = provider.RefreshGate(ctx, workspace, entitlement.GateAutopilotRuns)
+	default:
+		decision = s.Entitlements.Gate(ctx, workspace, entitlement.GateAutopilotRuns)
+	}
+	return autopilotQuotaPolicyFromDecision(decision)
+}
+
+func autopilotQuotaPolicyFromDecision(decision entitlement.Decision) (autopilotQuotaPolicy, bool) {
 	gate := decision.Gate
 	if gate.Action == entitlement.ActionOff {
 		return autopilotQuotaPolicy{}, false
@@ -103,6 +147,7 @@ func (s *AutopilotService) quotaPolicy(ctx context.Context, workspaceID pgtype.U
 		policyRevision:      decision.PolicyRevision,
 		subscriptionVersion: decision.SubscriptionVersion,
 		notifications:       gate.Notifications,
+		receivedAt:          decision.ReceivedAt,
 	}, true
 }
 
@@ -224,7 +269,33 @@ func (s *AutopilotService) createAutopilotRunWithQuota(
 		run, err := s.Queries.CreateAutopilotRun(ctx, params)
 		return run, false, err
 	}
+	run, reused, err := s.admitAutopilotRunWithQuota(ctx, policy, true, workspaceID, source, idempotencyKey, params)
+	var changed *errAutopilotQuotaPolicyChanged
+	if !errors.As(err, &changed) {
+		return run, reused, err
+	}
+	// The run was about to be rejected on a policy cached before a recorded
+	// change, such as an add-on bought through another API instance. Read the
+	// policy again and decide once more on it.
+	policy, enabled = s.refreshedQuotaPolicy(ctx, workspaceID, changed.since)
+	if !enabled {
+		run, err := s.Queries.CreateAutopilotRun(ctx, params)
+		return run, false, err
+	}
+	return s.admitAutopilotRunWithQuota(ctx, policy, false, workspaceID, source, idempotencyKey, params)
+}
 
+// admitAutopilotRunWithQuota is one admission attempt under policy. With
+// checkPolicyChange set, a rejection whose policy predates a recorded policy
+// change returns errAutopilotQuotaPolicyChanged instead of rejecting.
+func (s *AutopilotService) admitAutopilotRunWithQuota(
+	ctx context.Context,
+	policy autopilotQuotaPolicy,
+	checkPolicyChange bool,
+	workspaceID pgtype.UUID,
+	source, idempotencyKey string,
+	params db.CreateAutopilotRunParams,
+) (db.AutopilotRun, bool, error) {
 	tx, err := s.TxStarter.Begin(ctx)
 	if err != nil {
 		return db.AutopilotRun{}, false, fmt.Errorf("begin quota admission: %w", err)
@@ -292,6 +363,20 @@ func (s *AutopilotService) createAutopilotRunWithQuota(
 	}
 
 	wouldBlock := period.UsedCount+period.ReservedCount >= policy.limit
+	if wouldBlock && policy.action == entitlement.ActionEnforce && checkPolicyChange {
+		changedAt, err := qtx.GetEntitlementPolicyChange(ctx, workspaceID)
+		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+			return db.AutopilotRun{}, false, fmt.Errorf("load entitlement policy change: %w", err)
+		}
+		if err == nil && changedAt.Valid {
+			since := changedAt.Time.Add(autopilotPolicyChangeSkew)
+			if policy.receivedAt.Before(since) {
+				// Nothing was written yet; the deferred rollback releases the
+				// period lock before the caller calls Cloud.
+				return db.AutopilotRun{}, false, &errAutopilotQuotaPolicyChanged{since: since}
+			}
+		}
+	}
 	if wouldBlock && policy.action == entitlement.ActionEnforce {
 		period, err = qtx.IncrementAutopilotQuotaBlocked(ctx, db.IncrementAutopilotQuotaBlockedParams{
 			Source: source, WorkspaceID: workspaceID,
