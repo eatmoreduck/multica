@@ -462,7 +462,11 @@ function BillingTabContent() {
   const [autopilotAddonOpen, setAutopilotAddonOpen] = useState(false);
   const pricesQuery = useQuery({
     ...workspaceSubscriptionPricesOptions(wsId),
-    enabled: wsId.length > 0 && canUpgrade,
+    // Also read for the add-on pack price shown on the Buy button.
+    enabled:
+      wsId.length > 0 &&
+      (canUpgrade ||
+        summaryQuery.data?.availableActions.purchaseAutopilotRuns === true),
   });
   const checkoutMutation = useCreateWorkspaceSubscriptionCheckout(wsId);
   const portalMutation = useCreateWorkspaceSubscriptionPortal(wsId);
