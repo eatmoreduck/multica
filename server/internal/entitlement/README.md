@@ -35,10 +35,13 @@ The client reads:
   limit and period parameters as `enforce`. Multica also downgrades an expired
   cached `enforce` instruction to `observe` locally (see below).
 - `gates.*.notifications`: an optional, additive delivery policy. The autopilot
-  quota consumer recognizes `first_rejection_per_period` and delivers one
-  workspace notice for the first rejected execution in the Cloud-defined quota
-  period. A malformed notification policy is ignored without invalidating an
-  otherwise valid enforcement gate.
+  quota consumer recognizes two values. `first_rejection_per_period` delivers
+  one notice for the first rejected execution in the Cloud-defined quota
+  period. `first_rejection_per_limit` (revision 6) delivers one notice for the
+  first rejection at each limit within the period, so a limit raised by an
+  add-on purchase re-arms the notice. Any other value, or a malformed
+  notification policy, disables notices without invalidating an otherwise
+  valid enforcement gate.
 - `features`: paid-feature restrictions, one `{"action": ...}` per feature
   (revision 4). See [Paid features](#paid-features). Each feature is parsed on
   its own, after the rest of the policy: a missing, unknown, or malformed
@@ -136,6 +139,16 @@ upgraded is not refused on a policy cached before the upgrade, and repeated
 refusals cost at most one Cloud request per workspace per five seconds. A
 failed fetch answers exactly like `Gate`. The Cloud client implements it;
 `entitlementtest.Stub` does too (`SetRefreshed`).
+
+`ChangeRefresher.RefreshGateSince` is the variant for a change Multica
+recorded itself. A paid autopilot add-on is confirmed through one API
+instance, which writes `entitlement_policy_changes.changed_at` for the
+workspace. Any instance about to reject an autopilot run reads that time in
+the admission transaction; when its cached policy (`Decision.ReceivedAt`) is
+older than the change plus a clock-skew margin, it leaves the transaction,
+calls `RefreshGateSince`, which skips the five-second reuse window, and runs
+the admission once more on the new policy. Without a recorded change the
+rejection path makes no extra Cloud request.
 
 ## Member limit
 
